@@ -16,6 +16,8 @@ use http::{response::Parts, Response};
 use pyo3::{exceptions::PyRuntimeError, prelude::*};
 use tokio::sync::Mutex;
 
+use crate::util::collect_legacy_body;
+
 use super::{PyHeaderMap, PyMiddlewareError};
 
 /// Python-compatible [Response] object.
@@ -125,7 +127,7 @@ impl PyResponse {
             let body = {
                 let mut body_guard = body.lock().await;
                 let body = body_guard.take().ok_or(PyMiddlewareError::RequestGone)?;
-                let body = hyper::body::to_bytes(body)
+                let body = collect_legacy_body(body)
                     .await
                     .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
                 let buf = body.clone();

@@ -21,6 +21,8 @@ use tokio_test::assert_ready_ok;
 use tower::{layer::util::Stack, util::BoxCloneService, Layer, Service, ServiceExt};
 use tower_test::mock;
 
+use aws_smithy_http_server_python::collect_legacy_body;
+
 #[pyo3_asyncio::tokio::test]
 async fn identity_middleware() -> PyResult<()> {
     let layer = layer(
@@ -33,7 +35,7 @@ async def middleware(request, next):
 
     let th = tokio::spawn(async move {
         let (req, send_response) = handle.next_request().await.unwrap();
-        let req_body = hyper::body::to_bytes(req.into_body()).await.unwrap();
+        let req_body = collect_legacy_body(req.into_body()).await.unwrap();
         assert_eq!(req_body, "hello server");
         send_response.send_response(
             Response::builder()
@@ -160,7 +162,7 @@ async def middleware(request, next):
         assert_eq!("changed", req.headers().get("X-Existing").unwrap());
         assert!(req.headers().get("X-To-Delete").is_none());
         assert_eq!("/changed_uri", req.uri());
-        let req_body = hyper::body::to_bytes(req.into_body()).await.unwrap();
+        let req_body = collect_legacy_body(req.into_body()).await.unwrap();
         assert_eq!(req_body, "hello server".chars().rev().collect::<String>());
         send_response.send_response(
             Response::builder()
@@ -200,7 +202,7 @@ async def middleware(request, next):
 
     let th = tokio::spawn(async move {
         let (req, send_response) = handle.next_request().await.unwrap();
-        let req_body = hyper::body::to_bytes(req.into_body()).await.unwrap();
+        let req_body = collect_legacy_body(req.into_body()).await.unwrap();
         assert_eq!(req_body, "hello server");
         send_response.send_response(
             Response::builder()
@@ -235,7 +237,7 @@ async def middleware(request, next):
 
     let th = tokio::spawn(async move {
         let (req, send_response) = handle.next_request().await.unwrap();
-        let req_body = hyper::body::to_bytes(req.into_body()).await.unwrap();
+        let req_body = collect_legacy_body(req.into_body()).await.unwrap();
         assert_eq!(req_body, "hello server");
         send_response.send_response(
             Response::builder()
@@ -259,7 +261,7 @@ async def middleware(request, next):
 }
 
 async fn assert_body(response: Response<BoxBody>, eq: &str) {
-    let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
+    let body = collect_legacy_body(response.into_body()).await.unwrap();
     assert_eq!(body, eq);
 }
 

@@ -72,9 +72,15 @@ pub fn default_http_client_plugin_v2(
     let mut _default: Option<SharedHttpClient> = None;
 
     if behavior_version.is_at_least(BehaviorVersion::v2026_01_12()) {
-        // the latest https stack takes precedence if the config flag
-        // is enabled otherwise try to fall back to the legacy connector
-        // if that feature flag is available.
+        // takes precedence over legacy connector if enabled
+        #[cfg(feature = "default-https-client")]
+        {
+            let opts = crate::client::http::DefaultClientOptions::default()
+                .with_behavior_version(behavior_version);
+            _default = crate::client::http::default_https_client(opts);
+        }
+
+        // fall back to the legacy connector only when the modern client is unavailable
         #[cfg(all(
             feature = "connector-hyper-0-14-x",
             not(feature = "default-https-client")
@@ -83,17 +89,19 @@ pub fn default_http_client_plugin_v2(
         {
             _default = crate::client::http::hyper_014::default_client();
         }
-
-        // takes precedence over legacy connector if enabled
+    } else {
+        // the modern HTTPS client is preferred whenever it is enabled, regardless of behavior version
         #[cfg(feature = "default-https-client")]
         {
             let opts = crate::client::http::DefaultClientOptions::default()
                 .with_behavior_version(behavior_version);
             _default = crate::client::http::default_https_client(opts);
         }
-    } else {
-        // fallback to legacy hyper client for given behavior version
-        #[cfg(feature = "connector-hyper-0-14-x")]
+
+        #[cfg(all(
+            feature = "connector-hyper-0-14-x",
+            not(feature = "default-https-client")
+        ))]
         #[allow(deprecated)]
         {
             _default = crate::client::http::hyper_014::default_client();

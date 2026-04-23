@@ -7,7 +7,7 @@ use std::io;
 
 use futures::StreamExt;
 use futures_util::stream;
-use hyper::Body;
+use aws_smithy_legacy_http_server::body::Body;
 use pyo3::{prelude::*, py_run};
 
 use aws_smithy_http_server_python::types::ByteStream;

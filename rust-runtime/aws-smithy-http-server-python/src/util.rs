@@ -6,7 +6,11 @@
 pub mod collection;
 pub mod error;
 
+use bytes::{Bytes, BytesMut};
+use aws_smithy_legacy_http_server::body::HttpBody as LegacyHttpBody;
+use hyper::body::Body as HyperBody;
 use pyo3::{PyAny, PyObject, PyResult, PyTypeInfo, Python};
+use futures_util::future::poll_fn;
 
 // Captures some information about a Python function.
 #[derive(Debug, PartialEq)]
@@ -77,6 +81,49 @@ pub fn is_optional_of<T: PyTypeInfo>(py: Python, ty: &PyAny) -> PyResult<bool> {
         // and it is not really an error, it is just a type we don't expect
         _ => Ok(false),
     }
+}
+
+/// Collect a legacy `http_body 0.4` body into a single `Bytes` buffer.
+pub async fn collect_legacy_body<B>(body: B) -> Result<Bytes, B::Error>
+where
+    B: LegacyHttpBody<Data = Bytes>,
+{
+    let mut body = Box::pin(body);
+    let mut buf = BytesMut::new();
+
+    loop {
+        match poll_fn(|cx| body.as_mut().poll_data(cx)).await {
+            Some(Ok(chunk)) => buf.extend_from_slice(&chunk),
+            Some(Err(err)) => return Err(err),
+            None => break,
+        }
+    }
+
+    Ok(buf.freeze())
+}
+
+/// Collect a hyper 1.x body into a single `Bytes` buffer.
+pub async fn collect_hyper_body<B>(body: B) -> Result<Bytes, B::Error>
+where
+    B: HyperBody<Data = Bytes>,
+{
+    let mut body = Box::pin(body);
+    let mut buf = BytesMut::new();
+
+    loop {
+        match poll_fn(|cx| body.as_mut().poll_frame(cx)).await {
+            Some(Ok(frame)) => match frame.into_data() {
+                Ok(chunk) => buf.extend_from_slice(&chunk),
+                Err(_frame) => {
+                    // Trailer frames are ignored when collecting into a byte buffer.
+                }
+            },
+            Some(Err(err)) => return Err(err),
+            None => break,
+        }
+    }
+
+    Ok(buf.freeze())
 }
 
 #[cfg(test)]

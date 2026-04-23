@@ -65,8 +65,8 @@ where
 mod tests {
     use std::convert::Infallible;
 
+    use aws_smithy_legacy_http_server::body::Body;
     use http::{Request, Response};
-    use hyper::Body;
     use pyo3::prelude::*;
     use pyo3::types::IntoPyDict;
     use tower::{service_fn, ServiceBuilder, ServiceExt};

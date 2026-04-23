@@ -18,6 +18,7 @@
 
 pub mod context;
 mod error;
+mod hyper_compat;
 pub mod lambda;
 pub mod logging;
 pub mod middleware;
@@ -37,6 +38,8 @@ pub use middleware::{PyMiddlewareHandler, PyMiddlewareLayer, PyRequest, PyRespon
 pub use server::{PyApp, PyHandler};
 #[doc(inline)]
 pub use socket::PySocket;
+#[doc(inline)]
+pub use util::{collect_hyper_body, collect_legacy_body};
 #[doc(inline)]
 pub use util::error::{rich_py_err, RichPyErr};
 

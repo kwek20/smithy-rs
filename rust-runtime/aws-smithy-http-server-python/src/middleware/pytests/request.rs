@@ -4,8 +4,8 @@
  */
 
 use aws_smithy_http_server_python::PyRequest;
+use aws_smithy_legacy_http_server::body::Body;
 use http::{Request, Version};
-use hyper::Body;
 use pyo3::{exceptions::PyValueError, prelude::*, py_run};
 
 #[pyo3_asyncio::tokio::test]

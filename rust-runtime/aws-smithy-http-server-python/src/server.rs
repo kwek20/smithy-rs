@@ -11,12 +11,12 @@ use std::process;
 use std::sync::{mpsc, Arc};
 use std::thread;
 
-use aws_smithy_legacy_http_server::{
-    body::{Body, BoxBody},
-    routing::IntoMakeService,
-};
+use aws_smithy_legacy_http_server::body::{Body, BoxBody};
 use http::{Request, Response};
-use hyper::server::conn::AddrIncoming;
+use hyper_util::{
+    rt::{TokioExecutor, TokioIo},
+    server::conn::auto::Builder as ConnBuilder,
+};
 use parking_lot::Mutex;
 use pyo3::{prelude::*, types::IntoPyDict};
 use signal_hook::{consts::*, iterator::Signals};
@@ -257,26 +257,59 @@ event_loop.add_signal_handler(signal.SIGINT,
                 .build()
                 .expect("unable to start a new tokio runtime for this process");
             rt.block_on(async move {
-                let addr = addr_incoming_from_socket(raw_socket);
+                let listener = tokio_listener_from_socket(raw_socket);
 
                 if let Some(config) = tls {
                     let (acceptor, acceptor_rx) = tls_config_reloader(config);
-                    let listener = TlsListener::new(acceptor, addr, acceptor_rx);
-                    let server =
-                        hyper::Server::builder(listener).serve(IntoMakeService::new(service));
-
+                    let mut listener = TlsListener::new(acceptor, listener, acceptor_rx);
                     tracing::trace!("started tls hyper server from shared socket");
-                    // Run forever-ish...
-                    if let Err(err) = server.await {
-                        tracing::error!(error = ?err, "server error");
+
+                    loop {
+                        match listener.accept().await {
+                            Ok((stream, addr)) => {
+                                let service = crate::hyper_compat::LegacyTowerServiceAsHyper1Service::new(
+                                    service.clone(),
+                                );
+                                tokio::spawn(async move {
+                                    let conn = ConnBuilder::new(TokioExecutor::new());
+                                    if let Err(err) = conn
+                                        .serve_connection(TokioIo::new(stream), service)
+                                        .await
+                                    {
+                                        tracing::error!(error = ?err, ?addr, "server connection error");
+                                    }
+                                });
+                            }
+                            Err(err) => {
+                                tracing::error!(error = ?err, "server error");
+                                break;
+                            }
+                        }
                     }
                 } else {
-                    let server = hyper::Server::builder(addr).serve(IntoMakeService::new(service));
-
                     tracing::trace!("started hyper server from shared socket");
-                    // Run forever-ish...
-                    if let Err(err) = server.await {
-                        tracing::error!(error = ?err, "server error");
+
+                    loop {
+                        match listener.accept().await {
+                            Ok((stream, addr)) => {
+                                let service = crate::hyper_compat::LegacyTowerServiceAsHyper1Service::new(
+                                    service.clone(),
+                                );
+                                tokio::spawn(async move {
+                                    let conn = ConnBuilder::new(TokioExecutor::new());
+                                    if let Err(err) = conn
+                                        .serve_connection(TokioIo::new(stream), service)
+                                        .await
+                                    {
+                                        tracing::error!(error = ?err, ?addr, "server connection error");
+                                    }
+                                });
+                            }
+                            Err(err) => {
+                                tracing::error!(error = ?err, "server error");
+                                break;
+                            }
+                        }
                     }
                 }
             });
@@ -498,7 +531,7 @@ event_loop.add_signal_handler(signal.SIGINT,
     }
 }
 
-fn addr_incoming_from_socket(socket: Socket) -> AddrIncoming {
+fn tokio_listener_from_socket(socket: Socket) -> TcpListener {
     let std_listener: StdTcpListener = socket.into();
     // StdTcpListener::from_std doesn't set O_NONBLOCK
     std_listener
@@ -506,8 +539,7 @@ fn addr_incoming_from_socket(socket: Socket) -> AddrIncoming {
         .expect("unable to set `O_NONBLOCK=true` on `std::net::TcpListener`");
     let listener = TcpListener::from_std(std_listener)
         .expect("unable to create `tokio::net::TcpListener` from `std::net::TcpListener`");
-    AddrIncoming::from_listener(listener)
-        .expect("unable to create `AddrIncoming` from `TcpListener`")
+    listener
 }
 
 // Builds `TlsAcceptor` from given `config` and also creates a background task

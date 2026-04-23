@@ -12,6 +12,8 @@ use pyo3::{
     types::{IntoPyDict, PyDict},
 };
 
+use aws_smithy_http_server_python::collect_legacy_body;
+
 #[pyo3_asyncio::tokio::test]
 async fn building_response_in_python() -> PyResult<()> {
     let response = Python::with_gil(|py| {
@@ -45,7 +47,7 @@ response = Response(200, {"Content-Type": "application/json"}, b"hello world")
         assert_eq!(headers.get("Content-Type").unwrap(), "application/json");
     }
 
-    let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
+    let body = collect_legacy_body(response.into_body()).await.unwrap();
     assert_eq!(body, "hello world");
 
     Ok(())
