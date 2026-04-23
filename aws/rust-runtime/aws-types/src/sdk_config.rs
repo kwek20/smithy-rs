@@ -628,21 +628,13 @@ impl Builder {
     /// ```no_run
     /// # #[cfg(feature = "examples")]
     /// # fn example() {
+    /// use aws_smithy_http_client::{tls, Builder as HttpClientBuilder};
     /// use aws_types::sdk_config::{SdkConfig, TimeoutConfig};
-    /// use aws_smithy_runtime::client::http::hyper_014::HyperClientBuilder;
     /// use std::time::Duration;
     ///
-    /// // Create a connector that will be used to establish TLS connections
-    /// let tls_connector = hyper_rustls::HttpsConnectorBuilder::new()
-    ///     .with_webpki_roots()
-    ///     .https_only()
-    ///     .enable_http1()
-    ///     .enable_http2()
-    ///     .build();
-    /// // Create a HTTP client that uses the TLS connector. This client is
-    /// // responsible for creating and caching a HttpConnector when given HttpConnectorSettings.
-    /// // This hyper client will create HttpConnectors backed by hyper and the tls_connector.
-    /// let http_client = HyperClientBuilder::new().build(tls_connector);
+    /// let http_client = HttpClientBuilder::new()
+    ///     .tls_provider(tls::Provider::Rustls(tls::rustls_provider::CryptoMode::AwsLc))
+    ///     .build_https();
     /// let sdk_config = SdkConfig::builder()
     ///     .http_client(http_client)
     ///     // Connect/read timeouts are passed to the HTTP client when servicing a request
@@ -665,22 +657,14 @@ impl Builder {
     /// ```no_run
     /// # #[cfg(feature = "examples")]
     /// # fn example() {
+    /// use aws_smithy_http_client::{tls, Builder as HttpClientBuilder};
     /// use aws_types::sdk_config::{Builder, SdkConfig, TimeoutConfig};
-    /// use aws_smithy_runtime::client::http::hyper_014::HyperClientBuilder;
     /// use std::time::Duration;
     ///
     /// fn override_http_client(builder: &mut Builder) {
-    ///     // Create a connector that will be used to establish TLS connections
-    ///     let tls_connector = hyper_rustls::HttpsConnectorBuilder::new()
-    ///         .with_webpki_roots()
-    ///         .https_only()
-    ///         .enable_http1()
-    ///         .enable_http2()
-    ///         .build();
-    ///     // Create a HTTP client that uses the TLS connector. This client is
-    ///     // responsible for creating and caching a HttpConnector when given HttpConnectorSettings.
-    ///     // This hyper client will create HttpConnectors backed by hyper and the tls_connector.
-    ///     let http_client = HyperClientBuilder::new().build(tls_connector);
+    ///     let http_client = HttpClientBuilder::new()
+    ///         .tls_provider(tls::Provider::Rustls(tls::rustls_provider::CryptoMode::AwsLc))
+    ///         .build_https();
     ///
     ///     builder.set_http_client(Some(http_client));
     /// }

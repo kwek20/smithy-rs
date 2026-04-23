@@ -69,10 +69,9 @@ class AwsFluentClientDecorator : ClientCodegenDecorator {
             AwsFluentClientExtensions(codegenContext, types).render(this)
         }
 
-        // TODO(hyper1): disable rustls as a default feature in future release
-        // NOTE: We enable both rustls and default-https-client as default features. This keeps the legacy hyper+rustls
-        // stack working as is and lets BehaviorVersion control which client you get. In a future release we will
-        // break this and disable the rustls feature by default (and break old BMV versions w.r.t http client default).
+        // TODO(hyper1): revisit whether rustls should remain a default feature in a future release
+        // NOTE: We enable both `rustls` and `default-https-client` as default features so generated crates keep
+        // exposing the `rustls` switch while `default-https-client` selects the maintained HTTP 1.x stack.
         rustCrate.mergeFeature(Feature("rustls", default = true, listOf("aws-smithy-runtime/tls-rustls")))
         rustCrate.mergeFeature(Feature("default-https-client", default = true, listOf("aws-smithy-runtime/default-https-client")))
     }

@@ -28,7 +28,7 @@ serial_test = "3.1.1"
 hyper = { version = "0.14.26", features = ["server", "client"] }
 
 # This dependency is only required for testing the `pokemon-service-tls` program.
-hyper-rustls = { version = "0.24", features = ["http2"] }
+hyper-rustls = { version = "0.27.9", features = ["http2"] }
 
 # Local paths
 aws-smithy-legacy-http = { path = "../../../rust-runtime/aws-smithy-legacy-http/" }

@@ -10,7 +10,7 @@ rust-version = "1.91.1"
 
 [features]
 # This feature is to be used only for doc comments
-examples = ["dep:hyper-rustls", "aws-smithy-runtime/client", "aws-smithy-runtime/connector-hyper-0-14-x", "aws-smithy-runtime/tls-rustls"]
+examples = ["dep:aws-smithy-http-client", "dep:aws-smithy-runtime", "aws-smithy-runtime/client"]
 
 [dependencies]
 aws-credential-types = { path = "../aws-credential-types" }
@@ -19,10 +19,7 @@ aws-smithy-types = { path = "../../../rust-runtime/aws-smithy-types" }
 aws-smithy-runtime = { path = "../../../rust-runtime/aws-smithy-runtime", optional = true }
 aws-smithy-runtime-api = { path = "../../../rust-runtime/aws-smithy-runtime-api", features = ["client"] }
 tracing = "0.1.44"
-# cargo does not support optional test dependencies, so to completely disable rustls
-# we need to add the webpki-roots feature here.
-# https://github.com/rust-lang/cargo/issues/1596
-hyper-rustls = { version = "0.24.2", optional = true, default-features = false, features = ["http2", "webpki-roots"] }
+aws-smithy-http-client = { path = "../../../rust-runtime/aws-smithy-http-client", optional = true, features = ["default-client", "rustls-aws-lc"] }
 
 [dev-dependencies]
 http = "0.2.4"
@@ -50,5 +47,5 @@ stable = true
 
 [package.metadata.cargo-udeps.ignore]
 # used only in doc strings
-normal = ["aws-smithy-runtime", "hyper-rustls"]
+normal = ["aws-smithy-runtime", "aws-smithy-http-client"]
 development = ["aws-smithy-runtime"]

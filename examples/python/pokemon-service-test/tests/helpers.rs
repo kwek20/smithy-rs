@@ -3,12 +3,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-use std::fs::File;
-use std::io::BufReader;
+use std::fs;
 use std::process::Command;
 use std::time::Duration;
 
-use aws_smithy_runtime::client::http::hyper_014::HyperClientBuilder;
+use aws_smithy_http_client::{
+    tls::{self, TlsContext, TrustStore},
+    Builder,
+};
 use command_group::{CommandGroup, GroupChild};
 use pokemon_service_client::{Client, Config};
 use tokio::time;
@@ -96,26 +98,21 @@ pub fn client() -> PokemonClient {
 
 #[allow(dead_code)]
 pub fn http2_client() -> PokemonClient {
-    // Create custom cert store and add our test certificate to prevent unknown cert issues.
-    let mut reader = BufReader::new(File::open(TEST_CERT).expect("could not open certificate"));
-    let certs = rustls_pemfile::certs(&mut reader).expect("could not parse certificate");
-    let mut roots = tokio_rustls::rustls::RootCertStore::empty();
-    roots.add_parsable_certificates(&certs);
-
-    let tls_connector = hyper_rustls::HttpsConnectorBuilder::new()
-        .with_tls_config(
-            tokio_rustls::rustls::ClientConfig::builder()
-                .with_safe_defaults()
-                .with_root_certificates(roots)
-                .with_no_client_auth(),
-        )
-        .https_only()
-        .enable_http2()
-        .build();
+    let mut trust_store = TrustStore::empty().with_native_roots(false);
+    trust_store.add_pem_certificate(fs::read(TEST_CERT).expect("could not open certificate"));
+    let tls_context = TlsContext::builder()
+        .with_trust_store(trust_store)
+        .build()
+        .expect("valid TLS context");
 
     let base_url = PokemonServiceVariant::Http2.base_url();
     let config = Config::builder()
-        .http_client(HyperClientBuilder::new().build(tls_connector))
+        .http_client(
+            Builder::new()
+                .tls_provider(tls::Provider::Rustls(tls::rustls_provider::CryptoMode::AwsLc))
+                .tls_context(tls_context)
+                .build_https(),
+        )
         .endpoint_url(base_url)
         .build();
     Client::from_conf(config)

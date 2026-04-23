@@ -74,12 +74,6 @@ impl BehaviorVersion {
     /// This version updates the default HTTP client and TLS stack. SDKs shipped with
     /// a pre 1.x version of hyper and rustls originally. This behavior version updates
     /// the HTTP+TLS stack to maintained versions.
-    ///
-    /// <div class="warning">
-    /// NOTE: In a future release behavior versions prior to this will require enabling
-    /// feature flags manually to keep the legacy Hyper stack as the default. Specifically the
-    /// `aws-smithy-runtime/tls-rustls` feature flag combined with an older behavior version.
-    /// </div>
     #[deprecated(
         since = "1.9.0",
         note = "Superseded by v2025_08_07, which enables automatic HTTP(S) proxy support from environment variables in the default HTTPS client."
